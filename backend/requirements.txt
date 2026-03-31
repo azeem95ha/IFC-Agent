@@ -1,0 +1,12 @@
+fastapi>=0.115
+uvicorn[standard]
+python-multipart
+pydantic>=2
+langchain
+langchain-google-genai
+langchain-core
+langgraph
+ifcopenshell
+ifcdiff
+numpy
+python-dotenv

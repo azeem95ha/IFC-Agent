@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f3efe7;
+  --foreground: #1b1d1f;
+  --panel: rgba(255, 252, 246, 0.86);
+  --panel-strong: #fffdf8;
+  --muted: #6f746f;
+  --border: rgba(27, 29, 31, 0.12);
+  --accent: #c65d2e;
+  --accent-strong: #8f3d1c;
+  --accent-soft: rgba(198, 93, 46, 0.12);
+  --success: #245b49;
+  --shadow: 0 24px 60px rgba(84, 56, 31, 0.14);
+  font-family: "Space Grotesk", "Segoe UI Variable", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at top left, rgba(198, 93, 46, 0.22), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(36, 91, 73, 0.16), transparent 24%),
+    linear-gradient(180deg, #f8f3ea 0%, #f1eadf 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+button, input, textarea {
+  font: inherit;
+}
+
+pre, code {
+  font-family: "IBM Plex Mono", "Cascadia Code", Consolas, monospace;
+}
+
+::selection {
+  background: rgba(198, 93, 46, 0.24);
+}

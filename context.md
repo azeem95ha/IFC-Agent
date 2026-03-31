@@ -1,0 +1,108 @@
+# Project Context
+
+## 2026-03-31
+
+- Migration target: replace the `app_v2.py` Streamlit monolith with a FastAPI backend and React frontend, following `PLAN.md` and `SPEC.md`.
+- Current execution mode: implement the migration phase by phase and stop after each phase for user approval.
+- Phase 1 scope implemented in this iteration: backend scaffolding, in-memory session layer, API routing under `/api`, CORS wiring, and background session TTL cleanup.
+- New backend structure introduced:
+  - `backend/main.py`
+  - `backend/requirements.txt`
+  - `backend/models/session.py`
+  - `backend/services/session_manager.py`
+  - `backend/routers/sessions.py`
+- Session storage assumptions:
+  - Session state is in-memory and keyed by UUID4.
+  - Session files are stored under `IFC_SESSION_DIR`, defaulting to the system temp directory under `ifc_sessions`.
+  - Session TTL defaults to 7200 seconds and cleanup runs every 10 minutes.
+- Supporting project notes created because they did not exist yet:
+  - `context.md`
+  - `PKB.md`
+- Verification completed:
+  - `backend.main` imports successfully from the repository root.
+  - Session endpoints were exercised with FastAPI `TestClient` for create, read, delete, and missing-session `404` behavior.
+- Verification limitation:
+  - direct `workdir=backend` command execution intermittently fails due a Windows sandbox refresh issue, so `uvicorn main:app --reload` was not exercised end-to-end in that exact shell mode.
+- Phase 2 scope implemented in this iteration:
+  - added `backend/utils/thread_pool.py`
+  - copied `prompt.md` to `backend/prompt.md`
+  - copied `ifc_entities.pkl` to `backend/utils/ifc_entities.pkl`
+  - added `backend/models/ifc_entities.py`
+  - added `backend/tools/common.py`
+  - added `backend/tools/query_tools.py`
+  - added `backend/tools/geometry_tools.py`
+  - added `backend/tools/authoring_tools.py`
+- Tool migration status:
+  - all 29 tools are now plain async backend functions that accept `Session`
+  - Streamlit session access was replaced with direct `Session` state access
+  - shared geometry work now routes through the backend thread pool utility
+  - backend tool modules contain no `streamlit` imports and no `@tool` decorators
+- Phase 2 verification completed:
+  - `backend.tools.query_tools`, `backend.tools.geometry_tools`, `backend.tools.authoring_tools`, and `backend.models.ifc_entities` all import successfully under Python 3.11.
+- Phase 3 scope implemented in this iteration:
+  - added `backend/models/chat.py`
+  - added `backend/services/agent_service.py`
+  - added `backend/routers/chat.py`
+  - registered the chat router in `backend/main.py`
+- Agent and streaming status:
+  - LangGraph `create_react_agent` is now used in the backend service layer.
+  - All 29 migrated tools are bound to the active session and wrapped into LangChain tools at runtime.
+  - The system prompt is loaded from `backend/prompt.md` and enriched with the active IFC file path.
+  - SSE chat endpoint streams newline-delimited `data: {...}` events.
+  - Chat history is stored in `session.chat_history` and exposed through `/api/sessions/{session_id}/chat/history`.
+  - If no IFC model is loaded yet, the chat endpoint responds gracefully with `Please upload an IFC file first.` and a `done` event.
+- Phase 3 verification completed:
+  - `backend.models.chat`, `backend.services.agent_service`, `backend.routers.chat`, and `backend.main` import successfully under Python 3.11.
+  - Wrapped tool registration was validated for all 29 tools.
+  - The SSE route was exercised with `TestClient` and returned a valid streamed response for the no-model case.
+- Phase 4 scope implemented in this iteration:
+  - added `backend/services/ifc_service.py`
+  - added `backend/routers/files.py`
+  - added `ModelInfo` to `backend/models/session.py`
+  - registered file routes and `GET /api/health` in `backend/main.py`
+- File handling status:
+  - uploaded IFC bytes are stored under the per-session directory and reopened through `ifcopenshell`
+  - session state is updated only after the IFC file is parsed successfully
+  - current model download returns `application/octet-stream` with `Content-Disposition`
+  - model deletion clears the active model, path, filename, and IFC caches from the session
+- Phase 4 verification completed:
+  - `backend.services.ifc_service`, `backend.routers.files`, and `backend.main` import successfully
+  - `GET /api/health` returns `{"status": "ok"}`
+  - a generated scratch IFC file uploaded successfully, returned `ModelInfo`, downloaded successfully, reopened as a valid IFC4 model, and cleared correctly through the delete-model route
+- Phase 4 verification limitation:
+  - chat with a loaded model was not exercised end-to-end because that requires a valid Gemini API key and outbound model access.
+- Phase 5 scope implemented in this iteration:
+  - scaffolded `frontend/` with Vite React TypeScript
+  - installed frontend dependencies for axios, Zustand, SSE, Markdown rendering, highlighting, lucide icons, and Tailwind v4 integration
+  - added API modules in `frontend/src/api/`
+  - added Zustand store in `frontend/src/store/appStore.ts`
+  - added shared types in `frontend/src/types/`
+  - added layout, chat, model, session, and UI component modules in `frontend/src/components/`
+  - updated `frontend/vite.config.ts` with Tailwind integration and `/api` proxy
+  - added `frontend/.env.example` and `frontend/tailwind.config.ts`
+- Frontend behavior status:
+  - session IDs are persisted in `localStorage`
+  - API keys are persisted in `sessionStorage`
+  - session rehydration calls `GET /api/sessions/{id}` and recreates the session on `404`
+  - file upload, download, model removal, chat streaming, chat clearing, and new-session flows are wired to the backend endpoints
+  - assistant messages render SSE thinking steps, tool calls, tool results, and Markdown content
+- Phase 5 verification completed:
+  - the production frontend build succeeded with `npm run build`
+  - Vite output was generated under `frontend/dist`
+- Phase 5 verification note:
+  - the build needed to run outside the sandbox because Vite/Tailwind native binaries hit sandbox `EPERM` restrictions during the first verification attempt.
+- Phase 6 scope implemented in this iteration:
+  - updated root `requirements.txt` to delegate to `backend/requirements.txt`
+  - added `backend/.env.example`
+  - rewrote the root `README.md` for the FastAPI + React architecture and dev setup
+  - verified backend error handling for wrong file type, oversized upload, and no-model chat
+  - confirmed no `streamlit` or `langchain-community` references remain under `backend/` or `backend/requirements.txt`
+- Phase 6 verification completed:
+  - wrong file type upload returns `422`
+  - oversized upload returns `413`
+  - no-model chat still streams a graceful response
+  - final frontend production build succeeded after cleanup changes
+- Remaining technical debt observed during verification:
+  - the frontend bundle is large enough to trigger Vite's chunk-size warning; functionality is correct, but bundle splitting would be a sensible follow-up optimization.
+- Post-phase fix applied after live frontend testing:
+  - backend agent responses are now normalized from structured LangChain/Gemini content blocks into plain text before being emitted as SSE `message` events.
