@@ -6,8 +6,12 @@ import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,9 +26,9 @@ except ImportError:
     from routers.sessions import router as sessions_router
     from services.session_manager import session_manager
 
-load_dotenv()
-
 LOGGER = logging.getLogger(__name__)
+
+CLEANUP_INTERVAL_SECONDS = int(os.getenv("CLEANUP_INTERVAL_SECONDS", "600"))
 
 
 def _parse_cors_origins() -> list[str]:
@@ -37,7 +41,7 @@ async def _session_cleanup_loop() -> None:
         removed = session_manager.cleanup_expired()
         if removed:
             LOGGER.info("Removed %s expired session(s)", removed)
-        await asyncio.sleep(600)
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
 
 
 @asynccontextmanager

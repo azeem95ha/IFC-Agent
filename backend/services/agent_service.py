@@ -28,6 +28,9 @@ except ImportError:
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompt.md"
 
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.2"))
+
 TOOL_SPECS: list[tuple[Any, type | None]] = [
     (query_tools.get_project_info, None),
     (query_tools.list_all_types, None),
@@ -170,8 +173,8 @@ def build_agent(session: Session, api_key: str):
     tools = [_bind_tool(session, fn, args_schema) for fn, args_schema in TOOL_SPECS]
     system_prompt = _load_system_prompt(session.ifc_path)
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        temperature=0.2,
+        model=GEMINI_MODEL,
+        temperature=GEMINI_TEMPERATURE,
         google_api_key=resolved_api_key,
     )
     return create_react_agent(model=llm, tools=tools, prompt=system_prompt)
